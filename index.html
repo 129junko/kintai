@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>出退勤管理</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="出退勤">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --blue:    #B8D8F0;
+      --green:   #B8E0C0;
+      --peach:   #F5D4B4;
+      --pink:    #F5C8C8;
+      --primary: #6A9FC8;
+      --bg:      #F2F5F8;
+      --border:  #DDEAF5;
+      --text:    #333;
+    }
+
+    body {
+      font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+
+    /* ===== HEADER ===== */
+    .app-header {
+      background: var(--primary);
+      color: white;
+      padding: 14px 16px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+
+    .app-header h1 {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .header-today {
+      font-size: 12px;
+      background: rgba(255,255,255,0.25);
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+
+    /* ===== MONTH NAVIGATION ===== */
+    .month-nav {
+      display: flex;
+      align-items: center;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      gap: 8px;
+    }
+
+    .month-nav button {
+      width: 36px;
+      height: 36px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .month-nav button:active { opacity: 0.7; }
+
+    .month-title {
+      flex: 1;
+      text-align: center;
+    }
+
+    .month-title .year-month {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .month-title .period {
+      font-size: 11px;
+      color: #888;
+      margin-top: 1px;
+    }
+
+    .today-btn {
+      font-size: 11px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 5px 9px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ===== CALENDAR ===== */
+    .calendar-container {
+      padding: 8px 6px 4px;
+    }
+
+    .weekday-header {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      margin-bottom: 3px;
+    }
+
+    .weekday-cell {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 0;
+      color: #888;
+    }
+
+    .weekday-cell.sun { color: #D04040; }
+    .weekday-cell.sat { color: #4060C0; }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .day-cell {
+      background: white;
+      border-radius: 7px;
+      padding: 4px 3px;
+      min-height: 58px;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: transform 0.1s;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      overflow: hidden;
+    }
+
+    .day-cell:active { transform: scale(0.93); }
+
+    .day-cell.empty {
+      background: transparent;
+      cursor: default;
+      border: none;
+      min-height: 58px;
+    }
+
+    .day-cell.today {
+      border-color: var(--primary);
+    }
+
+    .day-cell.type-work     { background: var(--blue); }
+    .day-cell.type-nenkyu   { background: var(--green); }
+    .day-cell.type-teikyu   { background: var(--peach); }
+    .day-cell.type-shiteikyu{ background: var(--peach); }
+    .day-cell.type-holiday  { background: var(--pink); }
+
+    .day-num {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .day-cell.sun .day-num  { color: #D04040; }
+    .day-cell.sat .day-num  { color: #4060C0; }
+
+    .day-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #555;
+      margin-top: 2px;
+      line-height: 1.2;
+    }
+
+    .day-time {
+      font-size: 9px;
+      color: #666;
+      margin-top: 1px;
+      line-height: 1.4;
+    }
+
+    .holiday-name {
+      font-size: 8px;
+      color: #C04040;
+      margin-top: 1px;
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+
+    /* ===== LEGEND ===== */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      padding: 6px 8px 8px;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #666;
+    }
+
+    .legend-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* ===== SUMMARY ===== */
+    .summary {
+      background: white;
+      margin: 0 6px 6px;
+      border-radius: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+    }
+
+    .summary-title {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 8px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .summary-item {
+      text-align: center;
+      padding: 8px 4px;
+      border-radius: 8px;
+    }
+
+    .summary-item.work    { background: var(--blue); }
+    .summary-item.nenkyu  { background: var(--green); }
+    .summary-item.off     { background: var(--peach); }
+
+    .summary-label { font-size: 11px; color: #555; }
+    .summary-count { font-size: 24px; font-weight: 700; color: #333; line-height: 1.1; }
+    .summary-unit  { font-size: 11px; color: #555; }
+
+    /* ===== BOTTOM NAVIGATION ===== */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      background: white;
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 4px 8px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #AAB;
+      font-size: 11px;
+      gap: 3px;
+    }
+
+    .nav-btn .nav-icon { font-size: 22px; }
+    .nav-btn.active { color: var(--primary); }
+
+    /* ===== CONTENT PADDING ===== */
+    .content { padding-bottom: 72px; }
+
+    /* ===== PAGES ===== */
+    .page { display: none; }
+    .page.show { display: block; }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-overlay.show { display: flex; }
+
+    .modal-sheet {
+      background: white;
+      width: 100%;
+      max-width: 480px;
+      border-radius: 20px 20px 0 0;
+      padding: 8px 20px 24px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+    }
+
+    .modal-handle {
+      width: 38px;
+      height: 4px;
+      background: #DDD;
+      border-radius: 2px;
+      margin: 10px auto 16px;
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .type-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .type-btn {
+      padding: 13px 6px;
+      border: 2px solid #E0E8F0;
+      border-radius: 10px;
+      background: white;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+      color: #444;
+      transition: all 0.12s;
+    }
+
+    .type-btn:active { transform: scale(0.94); }
+
+    .type-btn.sel-work     { background: var(--blue);  border-color: #7AAAC8; }
+    .type-btn.sel-nenkyu   { background: var(--green); border-color: #7AAA7A; }
+    .type-btn.sel-teikyu   { background: var(--peach); border-color: #C8A07A; }
+    .type-btn.sel-holiday  { background: var(--pink);  border-color: #C88080; }
+    .type-btn.sel-none     { background: #EEE;         border-color: #CCC; }
+
+    .time-section {
+      display: none;
+      background: #F4F7FA;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .time-section.show { display: block; }
+
+    .time-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .time-row:last-child { margin-bottom: 0; }
+
+    .time-label {
+      font-size: 13px;
+      font-weight: 700;
+      width: 36px;
+      color: #666;
+      flex-shrink: 0;
+    }
+
+    .time-input {
+      flex: 1;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 17px;
+      text-align: center;
+      background: white;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .btn-delete {
+      width: 100%;
+      padding: 11px;
+      border: 1.5px solid #E06060;
+      border-radius: 10px;
+      background: white;
+      font-size: 13px;
+      cursor: pointer;
+      color: #D04040;
+      margin-bottom: 10px;
+    }
+
+    .btn-cancel {
+      flex: 1;
+      padding: 13px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: white;
+      font-size: 15px;
+      cursor: pointer;
+      color: #666;
+    }
+
+    .btn-save {
+      flex: 2;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      background: var(--primary);
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ===== SETTINGS ===== */
+    .settings-wrap {
+      padding: 14px 10px;
+    }
+
+    .settings-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .settings-card h3 {
+      font-size: 12px;
+      font-weight: 700;
+      color: #AAB;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+    }
+
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #F0F4F8;
+    }
+
+    .settings-row:last-child { border-bottom: none; }
+
+    .settings-row label {
+      font-size: 15px;
+    }
+
+    .settings-row input[type="time"] {
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      background: var(--bg);
+    }
+
+    .days-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .day-toggle {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .day-toggle span {
+      font-size: 12px;
+      color: #555;
+    }
+
+    .day-toggle input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      accent-color: var(--primary);
+    }
+
+    .save-btn {
+      width: 100%;
+      padding: 15px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    .save-btn:active { opacity: 0.85; }
+
+    .export-btn {
+      padding: 8px 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="app-header">
+  <h1>出退勤管理</h1>
+  <span class="header-today" id="headerToday"></span>
+</div>
+
+<!-- ===== CALENDAR PAGE ===== -->
+<div class="page show content" id="calendarPage">
+  <div class="month-nav">
+    <button onclick="changeMonth(-1)">&#8249;</button>
+    <div class="month-title">
+      <div class="year-month" id="monthTitle"></div>
+      <div class="period" id="periodTitle"></div>
+    </div>
+    <button onclick="changeMonth(1)">&#8250;</button>
+    <button class="today-btn" onclick="goToToday()">今日</button>
+  </div>
+
+  <div class="calendar-container">
+    <div class="weekday-header">
+      <div class="weekday-cell sun">日</div>
+      <div class="weekday-cell">月</div>
+      <div class="weekday-cell">火</div>
+      <div class="weekday-cell">水</div>
+      <div class="weekday-cell">木</div>
+      <div class="weekday-cell">金</div>
+      <div class="weekday-cell sat">土</div>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>出勤</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>年休</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--peach)"></div>定休・指定休</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--pink)"></div>祝日</div>
+  </div>
+
+  <div class="summary">
+    <div class="summary-title" id="summaryPeriod"></div>
+    <div class="summary-grid">
+      <div class="summary-item work">
+        <div class="summary-label">出勤</div>
+        <div class="summary-count" id="workCount">0</div>
+        <div class="summary-unit">日</div>
+      </div>
+      <div class="summary-item nenkyu">
+        <div class="summary-label">年休</div>
+        <div class="summary-count" id="nenkyuCount">0</div>
+        <div class="summary-unit">日</div>
+      </div>
+      <div class="summary-item off">
+        <div class="summary-label">定休・指定休</div>
+        <div class="summary-count" id="offCount">0</div>
+        <div class="summary-unit">日</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS PAGE ===== -->
+<div class="page content" id="settingsPage">
+  <div class="settings-wrap">
+
+    <div class="settings-card">
+      <h3>定休日（デフォルト）</h3>
+      <p style="font-size:12px;color:#999;margin-bottom:12px;">毎週の定休曜日を選択してください</p>
+      <div class="days-grid" id="daysGrid"></div>
+    </div>
+
+    <div class="settings-card">
+      <h3>デフォルト勤務時間</h3>
+      <div class="settings-row">
+        <label>出勤時刻</label>
+        <input type="time" id="defaultStart" value="08:00">
+      </div>
+      <div class="settings-row">
+        <label>退勤時刻</label>
+        <input type="time" id="defaultEnd" value="16:00">
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <h3>データ管理</h3>
+      <div class="settings-row">
+        <label>データをバックアップ（JSON）</label>
+        <button class="export-btn" onclick="exportData()">出力</button>
+      </div>
+    </div>
+
+    <button class="save-btn" id="saveBtn" onclick="saveSettings()">設定を保存</button>
+  </div>
+</div>
+
+<!-- Bottom Navigation -->
+<div class="bottom-nav">
+  <button class="nav-btn active" id="navCalendar" onclick="showPage('calendar')">
+    <span class="nav-icon">&#128197;</span>
+    カレンダー
+  </button>
+  <button class="nav-btn" id="navSettings" onclick="showPage('settings')">
+    <span class="nav-icon">&#9881;&#65039;</span>
+    設定
+  </button>
+</div>
+
+<!-- Day Edit Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="overlayClick(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle"></div>
+
+    <div class="type-buttons">
+      <button class="type-btn" id="btn-work"     onclick="selectType('出勤')">出勤</button>
+      <button class="type-btn" id="btn-nenkyu"   onclick="selectType('年休')">年休</button>
+      <button class="type-btn" id="btn-teikyu"   onclick="selectType('定休')">定休</button>
+      <button class="type-btn" id="btn-shiteikyu" onclick="selectType('指定休')">指定休</button>
+      <button class="type-btn" id="btn-holiday"  onclick="selectType('祝')">祝日</button>
+      <button class="type-btn" id="btn-none"     onclick="selectType('')">なし</button>
+    </div>
+
+    <div class="time-section" id="timeSection">
+      <div class="time-row">
+        <span class="time-label">出勤</span>
+        <input type="time" id="startTime" class="time-input">
+      </div>
+      <div class="time-row">
+        <span class="time-label">退勤</span>
+        <input type="time" id="endTime" class="time-input">
+      </div>
+    </div>
+
+    <button class="btn-delete" id="deleteBtn" onclick="deleteRecord()" style="display:none;">
+      この日の記録を削除する
+    </button>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn-save"   onclick="saveRecord()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 祝日データ =====
+const HOLIDAYS = {
+  '2024-01-01':'元日','2024-01-08':'成人の日','2024-02-11':'建国記念の日',
+  '2024-02-12':'振替休日','2024-02-23':'天皇誕生日','2024-03-20':'春分の日',
+  '2024-04-29':'昭和の日','2024-05-03':'憲法記念日','2024-05-04':'みどりの日',
+  '2024-05-05':'こどもの日','2024-05-06':'振替休日','2024-07-15':'海の日',
+  '2024-08-11':'山の日','2024-08-12':'振替休日','2024-09-16':'敬老の日',
+  '2024-09-22':'秋分の日','2024-09-23':'振替休日','2024-10-14':'スポーツの日',
+  '2024-11-03':'文化の日','2024-11-04':'振替休日','2024-11-23':'勤労感謝の日',
+  '2025-01-01':'元日','2025-01-13':'成人の日','2025-02-11':'建国記念の日',
+  '2025-02-23':'天皇誕生日','2025-02-24':'振替休日','2025-03-20':'春分の日',
+  '2025-04-29':'昭和の日','2025-05-03':'憲法記念日','2025-05-04':'みどりの日',
+  '2025-05-05':'こどもの日','2025-05-06':'振替休日','2025-07-21':'海の日',
+  '2025-08-11':'山の日','2025-09-15':'敬老の日','2025-09-23':'秋分の日',
+  '2025-10-13':'スポーツの日','2025-11-03':'文化の日','2025-11-23':'勤労感謝の日',
+  '2025-11-24':'振替休日',
+  '2026-01-01':'元日','2026-01-12':'成人の日','2026-02-11':'建国記念の日',
+  '2026-02-23':'天皇誕生日','2026-03-20':'春分の日','2026-04-29':'昭和の日',
+  '2026-05-03':'憲法記念日','2026-05-04':'みどりの日','2026-05-05':'こどもの日',
+  '2026-05-06':'振替休日','2026-07-20':'海の日','2026-08-11':'山の日',
+  '2026-09-21':'敬老の日','2026-09-23':'秋分の日','2026-10-12':'スポーツの日',
+  '2026-11-03':'文化の日','2026-11-23':'勤労感謝の日',
+  '2027-01-01':'元日','2027-01-11':'成人の日','2027-02-11':'建国記念の日',
+  '2027-02-23':'天皇誕生日','2027-03-21':'春分の日','2027-04-29':'昭和の日',
+  '2027-05-03':'憲法記念日','2027-05-04':'みどりの日','2027-05-05':'こどもの日',
+  '2027-07-19':'海の日','2027-08-11':'山の日','2027-09-20':'敬老の日',
+  '2027-09-23':'秋分の日','2027-10-11':'スポーツの日',
+  '2027-11-03':'文化の日','2027-11-23':'勤労感謝の日',
+};
+
+// ===== 状態 =====
+const todayObj  = new Date();
+const todayStr  = fmt(todayObj.getFullYear(), todayObj.getMonth()+1, todayObj.getDate());
+
+let dispYear  = todayObj.getFullYear();
+let dispMonth = todayObj.getMonth() + 1;
+// 16日より前なら前月の期間を表示
+if (todayObj.getDate() < 16) {
+  dispMonth--;
+  if (dispMonth < 1) { dispMonth = 12; dispYear--; }
+}
+
+let selDate = null;
+let selType = null;
+
+// ===== データ操作 =====
+function loadData() {
+  const raw = localStorage.getItem('kintai_v1');
+  if (!raw) return defaultData();
+  try { return JSON.parse(raw); } catch(e) { return defaultData(); }
+}
+
+function defaultData() {
+  return {
+    settings: { defaultDaysOff: [0, 2], defaultStart: '08:00', defaultEnd: '16:00' },
+    records: {}
+  };
+}
+
+function saveData(data) {
+  localStorage.setItem('kintai_v1', JSON.stringify(data));
+}
+
+function fmt(y, m, d) {
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+// ===== カレンダー描画 =====
+function renderCalendar() {
+  const data = loadData();
+  const { settings, records } = data;
+
+  // 期間: dispMonth/16 〜 (dispMonth+1)/15
+  let endYear = dispYear, endMonth = dispMonth + 1;
+  if (endMonth > 12) { endMonth = 1; endYear++; }
+
+  const periodStart = new Date(dispYear, dispMonth - 1, 16);
+  const periodEnd   = new Date(endYear, endMonth - 1, 15);
+
+  document.getElementById('monthTitle').textContent = `${dispYear}年${dispMonth}月`;
+  document.getElementById('periodTitle').textContent =
+    `${dispMonth}/16 〜 ${endMonth}/15`;
+  document.getElementById('summaryPeriod').textContent =
+    `${dispYear}年 ${dispMonth}月16日〜${endMonth}月15日`;
+
+  const grid = document.getElementById('calendarGrid');
+  grid.innerHTML = '';
+
+  // 開始曜日に合わせて空セル
+  const startDow = periodStart.getDay();
+  for (let i = 0; i < startDow; i++) {
+    const el = document.createElement('div');
+    el.className = 'day-cell empty';
+    grid.appendChild(el);
+  }
+
+  let workCnt = 0, nenkyuCnt = 0, offCnt = 0;
+
+  const cur = new Date(periodStart);
+  while (cur <= periodEnd) {
+    const y = cur.getFullYear(), m = cur.getMonth()+1, d = cur.getDate();
+    const dateStr = fmt(y, m, d);
+    const dow = cur.getDay();
+    const isToday = dateStr === todayStr;
+    const holiday = HOLIDAYS[dateStr];
+    const rec = records[dateStr];
+
+    // 表示タイプ決定
+    let cellType = '';   // CSSクラス用
+    let label    = '';
+    let timeHtml = '';
+
+    if (rec) {
+      const t = rec.type;
+      if (t === '出勤')    { cellType = 'type-work';      label = '出勤'; }
+      else if (t === '年休') { cellType = 'type-nenkyu';  label = '年'; }
+      else if (t === '定休') { cellType = 'type-teikyu';  label = '定休'; }
+      else if (t === '指定休'){ cellType = 'type-shiteikyu'; label = '指定休'; }
+      else if (t === '祝')   { cellType = 'type-holiday'; label = '祝'; }
+
+      if (t === '出勤' && rec.start && rec.end) {
+        timeHtml = `<div class="day-time">${rec.start}<br>${rec.end}</div>`;
+      }
+
+      // 集計
+      if (t === '出勤') workCnt++;
+      else if (t === '年休') nenkyuCnt++;
+      else if (t === '定休' || t === '指定休') offCnt++;
+    } else {
+      // 自動判定
+      if (holiday) {
+        cellType = 'type-holiday';
+        label = '祝';
+      } else if (settings.defaultDaysOff.includes(dow)) {
+        cellType = 'type-teikyu';
+        label = '定休';
+        offCnt++;
+      }
+    }
+
+    // 曜日クラス
+    let dowClass = dow === 0 ? ' sun' : dow === 6 ? ' sat' : '';
+
+    const el = document.createElement('div');
+    el.className = `day-cell${isToday ? ' today' : ''}${dowClass}${cellType ? ' '+cellType : ''}`;
+    el.onclick = () => openModal(dateStr);
+
+    // 祝日名（記録がない場合のみ）
+    let holidayNameHtml = '';
+    if (holiday && !rec) {
+      holidayNameHtml = `<div class="holiday-name">${HOLIDAYS[dateStr]}</div>`;
+    }
+
+    el.innerHTML =
+      `<div class="day-num">${d}</div>` +
+      (label ? `<div class="day-label">${label}</div>` : '') +
+      holidayNameHtml +
+      timeHtml;
+
+    grid.appendChild(el);
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  // 末尾を7の倍数に埋める
+  const endDow = periodEnd.getDay();
+  if (endDow < 6) {
+    for (let i = endDow + 1; i <= 6; i++) {
+      const el = document.createElement('div');
+      el.className = 'day-cell empty';
+      grid.appendChild(el);
+    }
+  }
+
+  // 集計更新
+  document.getElementById('workCount').textContent   = workCnt;
+  document.getElementById('nenkyuCount').textContent = nenkyuCnt;
+  document.getElementById('offCount').textContent    = offCnt;
+}
+
+// ===== 月移動 =====
+function changeMonth(delta) {
+  dispMonth += delta;
+  if (dispMonth > 12) { dispMonth = 1; dispYear++; }
+  if (dispMonth < 1)  { dispMonth = 12; dispYear--; }
+  renderCalendar();
+}
+
+function goToToday() {
+  dispYear  = todayObj.getFullYear();
+  dispMonth = todayObj.getMonth() + 1;
+  if (todayObj.getDate() < 16) {
+    dispMonth--;
+    if (dispMonth < 1) { dispMonth = 12; dispYear--; }
+  }
+  renderCalendar();
+}
+
+// ===== モーダル =====
+function openModal(dateStr) {
+  selDate = dateStr;
+  const data = loadData();
+  const rec  = data.records[dateStr];
+
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  const dowNames = ['日','月','火','水','木','金','土'];
+  document.getElementById('modalTitle').textContent =
+    `${m}月${d}日（${dowNames[dt.getDay()]}）`;
+
+  selType = rec ? rec.type : '';
+  updateTypeBtns();
+
+  const s = data.settings;
+  document.getElementById('startTime').value = (rec && rec.start) ? rec.start : (s.defaultStart || '08:00');
+  document.getElementById('endTime').value   = (rec && rec.end)   ? rec.end   : (s.defaultEnd   || '16:00');
+
+  document.getElementById('timeSection').classList.toggle('show', selType === '出勤');
+  document.getElementById('deleteBtn').style.display = rec ? 'block' : 'none';
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function overlayClick(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  selDate = null;
+  selType = null;
+}
+
+function selectType(type) {
+  selType = type;
+  updateTypeBtns();
+  document.getElementById('timeSection').classList.toggle('show', type === '出勤');
+}
+
+function updateTypeBtns() {
+  const map = {
+    '出勤':  ['btn-work',     'sel-work'],
+    '年休':  ['btn-nenkyu',   'sel-nenkyu'],
+    '定休':  ['btn-teikyu',   'sel-teikyu'],
+    '指定休':['btn-shiteikyu','sel-teikyu'],
+    '祝':    ['btn-holiday',  'sel-holiday'],
+    '':      ['btn-none',     'sel-none'],
+  };
+
+  Object.entries(map).forEach(([type, [id, cls]]) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    // 全selクラス除去
+    btn.className = btn.className.replace(/\bsel-\S+/g, '').trim();
+    if (selType === type) btn.classList.add(cls);
+  });
+}
+
+function saveRecord() {
+  if (!selDate) return;
+  const data = loadData();
+  if (selType === '') {
+    delete data.records[selDate];
+  } else {
+    const rec = { type: selType };
+    if (selType === '出勤') {
+      rec.start = document.getElementById('startTime').value;
+      rec.end   = document.getElementById('endTime').value;
+    }
+    data.records[selDate] = rec;
+  }
+  saveData(data);
+  closeModal();
+  renderCalendar();
+}
+
+function deleteRecord() {
+  if (!selDate) return;
+  const data = loadData();
+  delete data.records[selDate];
+  saveData(data);
+  closeModal();
+  renderCalendar();
+}
+
+// ===== 設定 =====
+function renderSettings() {
+  const { settings } = loadData();
+
+  const grid = document.getElementById('daysGrid');
+  grid.innerHTML = '';
+  const names = ['日','月','火','水','木','金','土'];
+  names.forEach((name, i) => {
+    const div = document.createElement('div');
+    div.className = 'day-toggle';
+    const checked = settings.defaultDaysOff.includes(i) ? 'checked' : '';
+    div.innerHTML =
+      `<span>${name}</span>` +
+      `<input type="checkbox" id="dow${i}" value="${i}" ${checked}>`;
+    grid.appendChild(div);
+  });
+
+  document.getElementById('defaultStart').value = settings.defaultStart || '08:00';
+  document.getElementById('defaultEnd').value   = settings.defaultEnd   || '16:00';
+}
+
+function saveSettings() {
+  const data = loadData();
+  const daysOff = [];
+  for (let i = 0; i < 7; i++) {
+    const cb = document.getElementById(`dow${i}`);
+    if (cb && cb.checked) daysOff.push(i);
+  }
+  data.settings.defaultDaysOff = daysOff;
+  data.settings.defaultStart   = document.getElementById('defaultStart').value;
+  data.settings.defaultEnd     = document.getElementById('defaultEnd').value;
+  saveData(data);
+
+  const btn = document.getElementById('saveBtn');
+  btn.textContent = '✓ 保存しました';
+  btn.style.background = '#5A9A58';
+  setTimeout(() => {
+    btn.textContent = '設定を保存';
+    btn.style.background = '';
+  }, 2000);
+
+  renderCalendar();
+}
+
+// ===== エクスポート =====
+function exportData() {
+  const data = loadData();
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `kintai_${dispYear}_${dispMonth}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ===== ページ切替 =====
+function showPage(page) {
+  document.getElementById('calendarPage').classList.toggle('show', page === 'calendar');
+  document.getElementById('settingsPage').classList.toggle('show', page === 'settings');
+  document.getElementById('navCalendar').classList.toggle('active', page === 'calendar');
+  document.getElementById('navSettings').classList.toggle('active', page === 'settings');
+  if (page === 'settings') renderSettings();
+}
+
+// ===== 初期化 =====
+function init() {
+  // データ初期化チェック
+  const data = loadData();
+  if (!data.settings) {
+    saveData(defaultData());
+  }
+
+  // ヘッダーに今日の日付
+  const m = todayObj.getMonth() + 1;
+  const d = todayObj.getDate();
+  const dowNames = ['日','月','火','水','木','金','土'];
+  document.getElementById('headerToday').textContent =
+    `今日 ${m}/${d}（${dowNames[todayObj.getDay()]}）`;
+
+  renderCalendar();
+
+  // Service Worker 登録
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+}
+
+init();
+</script>
+</body>
+</html>
